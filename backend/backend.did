@@ -1,0 +1,18 @@
+type PostInfo = 
+ record {
+   id: nat;
+   timestamp: int;
+   title: text;
+ };
+type Post = 
+ record {
+   content: text;
+   id: nat;
+   timestamp: int;
+   title: text;
+ };
+service : {
+  createPost: (text, text) -> (nat);
+  getPost: (nat) -> (opt Post) query;
+  getPosts: () -> (vec PostInfo) query;
+}
