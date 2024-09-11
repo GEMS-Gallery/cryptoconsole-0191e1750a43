@@ -1,5 +1,6 @@
 import { AuthClient } from '@dfinity/auth-client';
 import { Actor, HttpAgent } from '@dfinity/agent';
+import { Principal } from '@dfinity/principal';
 import { backend } from 'declarations/backend';
 
 const content = document.getElementById('content');
@@ -128,12 +129,22 @@ async function fetchICPPrice() {
     }
 }
 
+function displayIdentity() {
+    if (!isAuthenticated) {
+        content.innerHTML = 'Please login to view your identity.';
+        return;
+    }
+    const identity = authClient.getIdentity();
+    const principal = identity.getPrincipal();
+    content.innerHTML = `Your principal ID: ${principal.toText()}`;
+}
+
 commandInput.addEventListener('keypress', async (e) => {
     if (e.key === 'Enter') {
         const command = commandInput.value.trim();
         commandInput.value = '';
 
-        if (!isAuthenticated && command !== 'icp') {
+        if (!isAuthenticated && command !== 'icp' && command !== 'identity') {
             content.innerHTML = 'Please login to use commands.';
             return;
         }
@@ -149,8 +160,10 @@ commandInput.addEventListener('keypress', async (e) => {
             await fetchPosts();
         } else if (command === 'icp') {
             await fetchICPPrice();
+        } else if (command === 'identity') {
+            displayIdentity();
         } else {
-            content.innerHTML = 'Unknown command. Available commands: create [title] [content], view [id], list, icp';
+            content.innerHTML = 'Unknown command. Available commands: create [title] [content], view [id], list, icp, identity';
         }
     }
 });
