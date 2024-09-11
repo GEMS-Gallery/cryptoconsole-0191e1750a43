@@ -57,6 +57,18 @@ async function createPost(title, content) {
     }
 }
 
+async function fetchICPPrice() {
+    try {
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=internet-computer&vs_currencies=usd');
+        const data = await response.json();
+        const price = data['internet-computer'].usd;
+        content.innerHTML = `Current ICP price: $${price}`;
+    } catch (error) {
+        console.error('Error fetching ICP price:', error);
+        content.innerHTML = 'Error fetching ICP price.';
+    }
+}
+
 commandInput.addEventListener('keypress', async (e) => {
     if (e.key === 'Enter') {
         const command = commandInput.value.trim();
@@ -71,8 +83,10 @@ commandInput.addEventListener('keypress', async (e) => {
             await displayPost(id);
         } else if (command === 'list') {
             await fetchPosts();
+        } else if (command === 'icp') {
+            await fetchICPPrice();
         } else {
-            content.innerHTML = 'Unknown command. Available commands: create [title] [content], view [id], list';
+            content.innerHTML = 'Unknown command. Available commands: create [title] [content], view [id], list, icp';
         }
     }
 });
