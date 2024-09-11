@@ -1,11 +1,13 @@
 type PostInfo = 
  record {
+   author: principal;
    id: nat;
    timestamp: int;
    title: text;
  };
 type Post = 
  record {
+   author: principal;
    content: text;
    id: nat;
    timestamp: int;
@@ -13,6 +15,7 @@ type Post =
  };
 service : {
   createPost: (text, text) -> (nat);
+  getMyPosts: () -> (vec PostInfo) query;
   getPost: (nat) -> (opt Post) query;
   getPosts: () -> (vec PostInfo) query;
 }

@@ -6,6 +6,7 @@ import Time "mo:base/Time";
 import Text "mo:base/Text";
 import Int "mo:base/Int";
 import Iter "mo:base/Iter";
+import Principal "mo:base/Principal";
 
 actor {
   type Post = {
@@ -13,25 +14,29 @@ actor {
     title: Text;
     content: Text;
     timestamp: Int;
+    author: Principal;
   };
 
   type PostInfo = {
     id: Nat;
     title: Text;
     timestamp: Int;
+    author: Principal;
   };
 
   stable var nextPostId: Nat = 0;
   stable var posts: [(Nat, Post)] = [];
 
-  public func createPost(title: Text, content: Text) : async Nat {
+  public shared(msg) func createPost(title: Text, content: Text) : async Nat {
     let id = nextPostId;
     let timestamp = Time.now();
+    let author = msg.caller;
     let post: Post = {
       id;
       title;
       content;
       timestamp;
+      author;
     };
     posts := Array.append(posts, [(id, post)]);
     nextPostId += 1;
@@ -44,6 +49,7 @@ actor {
         id = post.id;
         title = post.title;
         timestamp = post.timestamp;
+        author = post.author;
       }
     })
   };
@@ -54,5 +60,19 @@ actor {
       case (null) { null };
       case (?(_, post)) { ?post };
     }
+  };
+
+  public shared query(msg) func getMyPosts() : async [PostInfo] {
+    let userPosts = Array.filter(posts, func((_, post): (Nat, Post)): Bool {
+      post.author == msg.caller
+    });
+    Array.map(userPosts, func((_, post): (Nat, Post)): PostInfo {
+      {
+        id = post.id;
+        title = post.title;
+        timestamp = post.timestamp;
+        author = post.author;
+      }
+    })
   };
 }

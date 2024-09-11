@@ -6,15 +6,18 @@ export interface Post {
   'id' : bigint,
   'title' : string,
   'content' : string,
+  'author' : Principal,
   'timestamp' : bigint,
 }
 export interface PostInfo {
   'id' : bigint,
   'title' : string,
+  'author' : Principal,
   'timestamp' : bigint,
 }
 export interface _SERVICE {
   'createPost' : ActorMethod<[string, string], bigint>,
+  'getMyPosts' : ActorMethod<[], Array<PostInfo>>,
   'getPost' : ActorMethod<[bigint], [] | [Post]>,
   'getPosts' : ActorMethod<[], Array<PostInfo>>,
 }

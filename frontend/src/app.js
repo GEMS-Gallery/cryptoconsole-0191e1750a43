@@ -1,20 +1,69 @@
+import { AuthClient } from '@dfinity/auth-client';
+import { Actor, HttpAgent } from '@dfinity/agent';
 import { backend } from 'declarations/backend';
 
 const content = document.getElementById('content');
 const commandInput = document.getElementById('command-input');
+const authButton = document.getElementById('auth-button');
 
-let posts = [];
+let authClient;
+let actor;
+let isAuthenticated = false;
+
+async function initAuth() {
+    authClient = await AuthClient.create();
+    isAuthenticated = await authClient.isAuthenticated();
+    updateAuthButton();
+
+    if (isAuthenticated) {
+        initActor();
+    }
+}
+
+function updateAuthButton() {
+    authButton.textContent = isAuthenticated ? 'Logout' : 'Login';
+}
+
+async function handleAuth() {
+    if (isAuthenticated) {
+        await authClient.logout();
+        isAuthenticated = false;
+        actor = null;
+    } else {
+        await authClient.login({
+            identityProvider: 'https://identity.ic0.app/',
+            onSuccess: () => {
+                isAuthenticated = true;
+                initActor();
+            }
+        });
+    }
+    updateAuthButton();
+}
+
+function initActor() {
+    const identity = authClient.getIdentity();
+    const agent = new HttpAgent({ identity });
+    actor = Actor.createActor(backend.idlFactory, {
+        agent,
+        canisterId: backend.canisterId,
+    });
+}
 
 async function fetchPosts() {
+    if (!isAuthenticated) {
+        content.innerHTML = 'Please login to view posts.';
+        return;
+    }
     try {
-        posts = await backend.getPosts();
-        displayPosts();
+        const posts = await actor.getPosts();
+        displayPosts(posts);
     } catch (error) {
         console.error('Error fetching posts:', error);
     }
 }
 
-function displayPosts() {
+function displayPosts(posts) {
     content.innerHTML = '';
     posts.forEach(post => {
         const postElement = document.createElement('div');
@@ -22,20 +71,26 @@ function displayPosts() {
         postElement.innerHTML = `
             <span class="post-title">${post.title}</span>
             <span class="post-timestamp">${new Date(Number(post.timestamp) / 1000000).toLocaleString()}</span>
+            <span class="post-author">${post.author.toText()}</span>
         `;
         content.appendChild(postElement);
     });
 }
 
 async function displayPost(id) {
+    if (!isAuthenticated) {
+        content.innerHTML = 'Please login to view posts.';
+        return;
+    }
     try {
-        const post = await backend.getPost(id);
+        const post = await actor.getPost(id);
         if (post) {
             content.innerHTML = `
                 <div class="post">
                     <h2>${post.title}</h2>
                     <p>${post.content}</p>
                     <span class="post-timestamp">${new Date(Number(post.timestamp) / 1000000).toLocaleString()}</span>
+                    <span class="post-author">${post.author.toText()}</span>
                 </div>
             `;
         } else {
@@ -48,8 +103,12 @@ async function displayPost(id) {
 }
 
 async function createPost(title, content) {
+    if (!isAuthenticated) {
+        console.error('User not authenticated');
+        return;
+    }
     try {
-        const id = await backend.createPost(title, content);
+        const id = await actor.createPost(title, content);
         console.log('Post created with ID:', id);
         await fetchPosts();
     } catch (error) {
@@ -74,10 +133,15 @@ commandInput.addEventListener('keypress', async (e) => {
         const command = commandInput.value.trim();
         commandInput.value = '';
 
+        if (!isAuthenticated && command !== 'icp') {
+            content.innerHTML = 'Please login to use commands.';
+            return;
+        }
+
         if (command.startsWith('create ')) {
             const [_, title, ...contentParts] = command.split(' ');
-            const content = contentParts.join(' ');
-            await createPost(title, content);
+            const postContent = contentParts.join(' ');
+            await createPost(title, postContent);
         } else if (command.startsWith('view ')) {
             const id = parseInt(command.split(' ')[1]);
             await displayPost(id);
@@ -91,7 +155,9 @@ commandInput.addEventListener('keypress', async (e) => {
     }
 });
 
-fetchPosts();
+authButton.addEventListener('click', handleAuth);
+
+initAuth();
 
 // Add blinking cursor effect
 setInterval(() => {
